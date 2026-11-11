@@ -1,5 +1,7 @@
 import { client, llmConfig } from "@/lib/llm";
 import type { ChatMessage, ChatRole } from "@/lib/types";
+import { readCacheTokens } from "@/lib/cost";
+import { appendMessage, createSession, recordUsage } from "@/lib/store";
 
 /**
  * D2 · 流式对话（SSE）
@@ -98,8 +100,7 @@ export async function POST(request: Request) {
         status: 500,
         headers: { "content-type": "application/json; charset=utf-8" },
       },
-    );
-  }
+    );  }
 
   const encoder = new TextEncoder();
   let firstTokenAt: number | null = null;
@@ -107,6 +108,17 @@ export async function POST(request: Request) {
   let clientGone = false;
   /** 生成耗时里程碑，客户端提前断开时也要能打日志 */
   let ttftMs: number | null = null;
+  /** 累积完整回答，流结束后一次性落库 */
+  let acc = "";
+  /** 流式下的 usage 只在最后一块出现，先存下来 */
+  let usageTokens: { hit: number; miss: number; output: number } | null = null;
+
+  // 会话记录：标题取最后一条用户消息
+  const lastUser = [...messages].reverse().find((m) => m.role === "user");
+  const session = createSession(lastUser?.content ?? "新对话", llmConfig.model);
+  if (lastUser) {
+    appendMessage(session.id, { role: "user", content: lastUser.content });
+  }
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
@@ -153,11 +165,18 @@ export async function POST(request: Request) {
               firstTokenAt = Date.now();
               ttftMs = firstTokenAt - startedAt;
             }
+            acc += text;
             // 一帧一个 delta，前端收到就追加
             send("delta", { text });
           }
           // usage 只有在 include_usage 打开时才会出现在最后一块
           if (chunk.usage) {
+            const cache = readCacheTokens(chunk.usage);
+            usageTokens = {
+              hit: cache.hit,
+              miss: cache.miss,
+              output: chunk.usage.completion_tokens ?? 0,
+            };
             send("usage", {
               promptTokens: chunk.usage.prompt_tokens,
               completionTokens: chunk.usage.completion_tokens,
@@ -170,7 +189,27 @@ export async function POST(request: Request) {
           `[chat:stream] trace=${traceId} model=${llmConfig.model} ttft=${ttftMs}ms total=${totalMs}ms${clientGone ? " (client gone)" : ""}`,
         );
 
-        send("done", { traceId, ttftMs, totalMs });
+        // 落库：即使客户端断开，已生成的内容也要留下（否则后台看不到这次对话）
+        const tokens = usageTokens ?? {
+          hit: 0,
+          miss: Math.ceil(messages.reduce((n, m) => n + m.content.length, 0) * 1.2),
+          output: Math.ceil(acc.length * 1.2),
+        };
+        const costYuan = recordUsage(
+          { inputMissTokens: tokens.miss, inputHitTokens: tokens.hit, outputTokens: tokens.output },
+          totalMs,
+        );
+        appendMessage(session.id, {
+          role: "assistant",
+          content: acc,
+          latencyMs: totalMs,
+          ttftMs: ttftMs ?? undefined,
+          promptTokens: tokens.miss + tokens.hit,
+          completionTokens: tokens.output,
+          costYuan,
+        });
+
+        send("done", { traceId, ttftMs, totalMs, sessionId: session.id });
       } catch (err) {
         const name = err instanceof Error ? err.name : "Unknown";
         // 客户端主动断开不是错误，不要报给前端

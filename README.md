@@ -16,8 +16,18 @@
 | Function Calling | ✅ | 3 个工具、自动串行、防死循环 |
 | 结构化输出 | ✅ | zod 校验 + 错误回传重试 |
 | 成本核算 | ✅ | 真实账单反推单价、缓存命中分析 |
-| 会话管理 / 用量看板 / 配额 | 🚧 | 进行中 |
+| 后台概览 | ✅ | 今日请求/token/成本 + 近 7 日趋势 |
+| 会话列表与详情 | ✅ | 分页、消息序列、单条耗时与 token |
+| 用量与成本看板 | ✅ | 缓存命中率、场景成本、单价表 |
+| 参数设置 | ✅ | **本地 localStorage，未接入后端** |
+| 会话持久化 | 🚧 | 当前内存版：进程重启丢失、多实例不共享 |
+| 配额拦截 | 🚧 | 计划中，按金额而非次数 |
 | RAG 知识库问答 | 🚧 | 计划中（独立 Python 服务） |
+
+> ⚠️ **当前实现的已知限制**：会话与用量存在进程内存里（`src/lib/store.ts`）。
+> 本地开发重启即丢，部署到 Vercel 后多副本之间不共享。
+> 接口已按存储层设计，接 Neon/Postgres 只需替换 `store.ts` 的实现。
+> 参数设置页是纯前端 localStorage，不会影响实际请求——页面上有醒目提示。
 
 ---
 
@@ -61,26 +71,39 @@ pnpm dev
 src/
 ├── app/
 │   ├── api/
-│   │   ├── chat/route.ts          # 非流式对话
-│   │   ├── chat/stream/route.ts   # SSE 流式对话
-│   │   ├── agent/route.ts         # Function Calling
-│   │   ├── extract/route.ts       # 结构化输出（信息抽取）
-│   │   └── demo/tick/route.ts     # 教学用最小流式接口
-│   ├── chat/page.tsx              # 对话界面
-│   └── demo/page.tsx              # 流式原理演示页
+│   │   ├── chat/route.ts              # 非流式对话
+│   │   ├── chat/stream/route.ts       # SSE 流式对话（含会话落库）
+│   │   ├── agent/route.ts             # Function Calling
+│   │   ├── extract/route.ts           # 结构化输出（信息抽取）
+│   │   ├── sessions/route.ts          # 会话列表（分页）
+│   │   ├── sessions/[id]/route.ts     # 会话详情（动态路由，params 是 Promise）
+│   │   ├── usage/route.ts             # 用量与成本聚合
+│   │   └── demo/tick/route.ts         # 教学用最小流式接口
+│   ├── chat/page.tsx                  # 对话界面
+│   ├── demo/page.tsx                  # 流式原理演示页
+│   └── admin/
+│       ├── layout.tsx                 # 后台壳（固定侧边栏 + 内容区）
+│       ├── page.tsx                   # 概览：今日指标 + 近 7 日趋势
+│       ├── sessions/page.tsx          # 会话列表（分页）
+│       ├── sessions/[id]/page.tsx     # 会话详情（服务端壳 + 客户端数据区）
+│       ├── usage/page.tsx             # 用量与成本看板
+│       └── settings/page.tsx          # 参数设置（本地 localStorage）
 ├── components/
-│   ├── ChatBox.tsx                # 会话界面
-│   └── MarkdownStream.tsx         # 增量 Markdown 渲染
+│   ├── AdminNav.tsx                   # 后台导航（usePathname 需 Suspense）
+│   ├── ChatBox.tsx                    # 会话界面
+│   ├── SessionDetail.tsx              # 会话详情数据区
+│   └── MarkdownStream.tsx             # 增量 Markdown 渲染
 └── lib/
-    ├── llm.ts                     # 模型客户端与统一错误映射
-    ├── sse.ts                     # SSE 帧解析器（纯函数）
-    ├── useChatStream.ts           # 流式状态机
-    ├── markdown-split.ts          # Markdown 分块
-    ├── schema.ts                  # zod schema
-    ├── structured.ts              # 结构化调用 + 重试
-    ├── tools.ts                   # 工具定义与执行器
-    ├── cost.ts                    # 成本核算
-    └── types.ts                   # 共享类型
+    ├── llm.ts                         # 模型客户端与统一错误映射
+    ├── sse.ts                         # SSE 帧解析器（纯函数）
+    ├── useChatStream.ts               # 流式状态机
+    ├── markdown-split.ts              # Markdown 分块
+    ├── schema.ts                      # zod schema
+    ├── structured.ts                  # 结构化调用 + 重试
+    ├── tools.ts                       # 工具定义与执行器
+    ├── cost.ts                        # 成本核算与单价表
+    ├── store.ts                       # 会话/用量存储（当前内存版）
+    └── types.ts                       # 共享类型
 ```
 
 ---
