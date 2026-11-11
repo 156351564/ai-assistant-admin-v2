@@ -9,34 +9,34 @@ const modules = [
     state: "已完成",
     tone: "done" as const,
   },
-  {
-    href: "/admin",
-    title: "管理后台",
-    desc: "概览、会话、用量、设置四页（含侧边栏导航）",
-    state: "已完成",
-    tone: "done" as const,
-  },
-  {
-    href: "/admin/sessions",
-    title: "会话与日志",
-    desc: "会话列表、消息详情、单条耗时与 token",
-    state: "已完成",
-    tone: "done" as const,
-  },
-  {
-    href: "/admin/usage",
-    title: "用量与成本",
-    desc: "今日指标、缓存命中率、场景成本、近 7 日趋势",
-    state: "已完成",
-    tone: "done" as const,
-  },
-  {
-    href: "/admin/settings",
-    title: "参数设置",
-    desc: "系统提示词、temperature、max_tokens、功能开关",
-    state: "本地配置",
-    tone: "done" as const,
-  },
+  // {
+  //   href: "/admin",
+  //   title: "管理后台",
+  //   desc: "概览、会话、用量、设置四页（含侧边栏导航）",
+  //   state: "已完成",
+  //   tone: "done" as const,
+  // },
+  // {
+  //   href: "/admin/sessions",
+  //   title: "会话与日志",
+  //   desc: "会话列表、消息详情、单条耗时与 token",
+  //   state: "已完成",
+  //   tone: "done" as const,
+  // },
+  // {
+  //   href: "/admin/usage",
+  //   title: "用量与成本",
+  //   desc: "今日指标、缓存命中率、场景成本、近 7 日趋势",
+  //   state: "已完成",
+  //   tone: "done" as const,
+  // },
+  // {
+  //   href: "/admin/settings",
+  //   title: "参数设置",
+  //   desc: "系统提示词、temperature、max_tokens、功能开关",
+  //   state: "本地配置",
+  //   tone: "done" as const,
+  // },
   {
     href: "#",
     title: "知识库问答",
@@ -79,12 +79,6 @@ export default function Home() {
             className="rounded-lg bg-neutral-900 px-4 py-2 text-sm text-white transition hover:bg-neutral-700"
           >
             进入管理后台 →
-          </Link>
-          <Link
-            href="/chat"
-            className="rounded-lg border border-neutral-300 bg-white px-4 py-2 text-sm text-neutral-800 transition hover:border-neutral-400"
-          >
-            试试流式对话
           </Link>
         </div>
       </header>

@@ -76,24 +76,14 @@ function NavBody({ pathname }: { pathname: string | null }) {
           </ul>
         </nav>
 
-        <div className="border-t border-neutral-200 px-4 py-3">
-          <Link
-            href="/"
-            className="text-xs text-neutral-500 transition hover:text-neutral-900"
-          >
-            ← 返回作品集首页
-          </Link>
-        </div>
+        {/* 侧边栏不再放返回入口，避免与内容区右上角的按钮重复 */}
       </aside>
 
       {/* 移动端：侧边栏收起，变成顶部标题 + 横向标签 */}
       <div className="sticky top-0 z-20 border-b border-neutral-200 bg-white md:hidden">
-        <div className="flex items-center justify-between px-4 py-3">
+        <div className="px-4 py-3">
           <Link href="/admin" className="text-sm font-semibold text-neutral-900">
             AI 助手后台
-          </Link>
-          <Link href="/" className="text-xs text-neutral-500">
-            首页
           </Link>
         </div>
         <nav aria-label="后台导航" className="overflow-x-auto px-2 pb-2">
