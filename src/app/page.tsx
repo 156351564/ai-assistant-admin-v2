@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-/** 首页：作品集的入口页。后面 D4/D6 加后台模块时，这里会变成导航壳 */
+/** 首页：作品集的入口页。所有入口都指向真实可访问的页面，不链 API 端点 */
 const modules = [
   {
     href: "/chat",
@@ -10,32 +10,32 @@ const modules = [
     tone: "done" as const,
   },
   {
-    href: "/api/chat",
-    title: "非流式接口",
-    desc: "统一 ChatResult 结构、错误码映射、超时中断",
+    href: "/admin",
+    title: "管理后台",
+    desc: "概览、会话、用量、设置四页（含侧边栏导航）",
     state: "已完成",
     tone: "done" as const,
   },
   {
-    href: "/api/chat/stream",
-    title: "流式接口",
-    desc: "text/event-stream，事件类型 start / delta / done / error",
-    state: "已完成",
-    tone: "done" as const,
-  },
-  {
-    href: "#",
+    href: "/admin/sessions",
     title: "会话与日志",
-    desc: "会话列表、消息详情、异常标记",
-    state: "D3-D4 待做",
-    tone: "todo" as const,
+    desc: "会话列表、消息详情、单条耗时与 token",
+    state: "已完成",
+    tone: "done" as const,
   },
   {
-    href: "#",
-    title: "用量与配额",
-    desc: "按日 token 用量、成本核算、超额拦截",
-    state: "D4 待做",
-    tone: "todo" as const,
+    href: "/admin/usage",
+    title: "用量与成本",
+    desc: "今日指标、缓存命中率、场景成本、近 7 日趋势",
+    state: "已完成",
+    tone: "done" as const,
+  },
+  {
+    href: "/admin/settings",
+    title: "参数设置",
+    desc: "系统提示词、temperature、max_tokens、功能开关",
+    state: "本地配置",
+    tone: "done" as const,
   },
   {
     href: "#",
@@ -71,6 +71,21 @@ export default function Home() {
               </span>
             ),
           )}
+        </div>
+
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link
+            href="/admin"
+            className="rounded-lg bg-neutral-900 px-4 py-2 text-sm text-white transition hover:bg-neutral-700"
+          >
+            进入管理后台 →
+          </Link>
+          <Link
+            href="/chat"
+            className="rounded-lg border border-neutral-300 bg-white px-4 py-2 text-sm text-neutral-800 transition hover:border-neutral-400"
+          >
+            试试流式对话
+          </Link>
         </div>
       </header>
 

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import MarkdownStream from "@/components/MarkdownStream";
 import { useChatStream } from "@/lib/useChatStream";
@@ -38,8 +39,18 @@ export default function ChatBox() {
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 p-6">
+      <nav className="flex items-center gap-3 text-xs text-neutral-500">
+        <Link href="/" className="hover:text-neutral-900">
+          ← 返回首页
+        </Link>
+        <span className="text-neutral-300">/</span>
+        <Link href="/admin" className="hover:text-neutral-900">
+          管理后台
+        </Link>
+      </nav>
+
       <div className="flex items-baseline justify-between">
-        <h1 className="text-lg font-semibold">流式对话（D2）</h1>
+        <h1 className="text-lg font-semibold">流式对话</h1>
         <div className="flex items-center gap-3 text-xs text-neutral-500">
           <span>
             状态：
