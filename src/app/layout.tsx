@@ -18,9 +18,9 @@ export const metadata: Metadata = {
     template: "%s ｜ AI 助手管理后台",
   },
   description:
-    "基于 Next.js + DeepSeek 的 AI 助手管理后台：SSE 流式对话、Function Calling、RAG 知识库问答、配额与用量统计。",
+    "基于 Next.js + DeepSeek 的 AI 助手管理后台：SSE 流式对话、Function Calling、配额与用量统计。RAG 知识库问答为配套的独立 Python 服务。",
   applicationName: "AI 助手管理后台",
-  keywords: ["AI 应用", "大模型", "SSE", "流式输出", "RAG", "Function Calling"],
+  keywords: ["AI 应用", "大模型", "SSE", "流式输出", "Function Calling", "SSE 解析"],
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
