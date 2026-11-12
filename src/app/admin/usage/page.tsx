@@ -26,6 +26,16 @@ interface WeekBucket extends UsageBucket {
   cacheHitRate: number;
 }
 
+interface QuotaData {
+  date: string;
+  limitYuan: number;
+  usedYuan: number;
+  remainingYuan: number;
+  percent: number;
+  exceeded: boolean;
+  resetAt: number;
+}
+
 interface UsageData {
   days: number;
   today: UsageBucket;
@@ -33,6 +43,7 @@ interface UsageData {
   series: UsageBucket[];
   scenarios: Array<{ name: string; perCall: string; thousandCost: string }>;
   prices: { inputMiss: number; inputHit: number; output: number };
+  quota: QuotaData;
 }
 
 type UsageResponse =
@@ -254,7 +265,7 @@ export default function AdminUsagePage() {
 }
 
 function ReadyView({ data, onReload }: { data: UsageData; onReload: () => void }) {
-  const { today, week, series, scenarios, prices } = data;
+  const { today, week, series, scenarios, prices, quota } = data;
 
   const todayTokens = today.promptTokens + today.completionTokens;
   const todayHitRate =
@@ -432,12 +443,62 @@ function ReadyView({ data, onReload }: { data: UsageData; onReload: () => void }
 
       <section aria-labelledby="quota" className="mt-6">
         <h2 id="quota" className="mb-3 text-sm font-semibold text-neutral-900">
-          配额
+          当日配额
         </h2>
-        <div className="rounded-lg border border-dashed border-neutral-300 bg-white px-4 py-8 text-center">
-          <p className="text-sm text-neutral-600">未接入，计划 D5 实现</p>
-          <p className="mt-1 text-xs text-neutral-400">
-            额度上限、超额拦截与告警暂时没有数据来源，这里不展示假进度。
+        <div className="rounded-lg border border-neutral-200 bg-white p-4">
+          <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+            <p className="text-sm text-neutral-700">
+              已用 <b className="text-neutral-900">{formatCost(quota.usedYuan)}</b>
+              <span className="text-neutral-400"> / 上限 {formatCost(quota.limitYuan)}</span>
+            </p>
+            <p
+              className={
+                quota.exceeded
+                  ? "text-xs font-medium text-red-600"
+                  : quota.percent >= 80
+                    ? "text-xs font-medium text-amber-600"
+                    : "text-xs text-neutral-500"
+              }
+            >
+              {quota.exceeded
+                ? "额度已用完，新请求会被 429 拒绝"
+                : `剩余 ${formatCost(quota.remainingYuan)}（${quota.percent}%）`}
+            </p>
+          </div>
+
+          <div className="h-2 overflow-hidden rounded-full bg-neutral-100">
+            <div
+              className={
+                quota.exceeded
+                  ? "h-full rounded-full bg-red-500 transition-all"
+                  : quota.percent >= 80
+                    ? "h-full rounded-full bg-amber-500 transition-all"
+                    : "h-full rounded-full bg-neutral-900 transition-all"
+              }
+              style={{ width: `${Math.min(100, quota.percent)}%` }}
+            />
+          </div>
+
+          <div className="mt-3 grid gap-2 text-[11px] text-neutral-500 sm:grid-cols-3">
+            <p>
+              重置时间：
+              {new Date(quota.resetAt).toLocaleString("zh-CN", {
+                month: "2-digit",
+                day: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </p>
+            <p>统计日期：{quota.date}</p>
+            <p>
+              超额响应：<code className="font-mono">429 QUOTA_EXCEEDED</code> + Retry-After
+            </p>
+          </div>
+
+          <p className="mt-3 border-t border-neutral-100 pt-2 text-[11px] leading-relaxed text-neutral-400">
+            按<b className="text-neutral-600">金额</b>而非次数限额：实测普通问答单次约 ¥0.0010，
+            双工具调用约 ¥0.0044，差 4 倍以上，次数配额拦不住刷接口。
+            当前用量存在进程内存，重启或多实例部署时判定不准，接入数据库后才能作为真正的风控。
           </p>
         </div>
       </section>

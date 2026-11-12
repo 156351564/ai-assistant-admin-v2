@@ -1,7 +1,7 @@
 import { client, llmConfig } from "@/lib/llm";
 import type { ChatMessage, ChatRole } from "@/lib/types";
 import { readCacheTokens } from "@/lib/cost";
-import { appendMessage, createSession, recordUsage } from "@/lib/store";
+import { appendMessage, checkQuota, createSession, recordUsage } from "@/lib/store";
 
 /**
  * D2 · 流式对话（SSE）
@@ -101,6 +101,32 @@ export async function POST(request: Request) {
         headers: { "content-type": "application/json; charset=utf-8" },
       },
     );  }
+
+  /**
+   * 配额闸门：必须在调用模型**之前**判。
+   * 生成完再检查等于钱已经花掉了，拦不住刷接口的人。
+   * 429 是语义正确的状态码；retry-after 告诉客户端什么时候可以再来。
+   */
+  const quota = checkQuota();
+  if (!quota.ok) {
+    const retryAfter = Math.max(1, Math.ceil((quota.state.resetAt - Date.now()) / 1000));
+    return new Response(
+      JSON.stringify({
+        ok: false,
+        code: "QUOTA_EXCEEDED",
+        message: `今日额度已用完：已用 ¥${quota.state.usedYuan.toFixed(4)} / 上限 ¥${quota.state.limitYuan}`,
+        traceId,
+        resetAt: quota.state.resetAt,
+      }),
+      {
+        status: 429,
+        headers: {
+          "content-type": "application/json; charset=utf-8",
+          "retry-after": String(retryAfter),
+        },
+      },
+    );
+  }
 
   const encoder = new TextEncoder();
   let firstTokenAt: number | null = null;

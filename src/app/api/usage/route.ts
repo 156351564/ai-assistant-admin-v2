@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { usageSummary } from "@/lib/store";
+import { quotaState, usageSummary } from "@/lib/store";
 import {
   PRICE_TABLE,
   SCENARIO_SAMPLES,
@@ -16,6 +16,7 @@ import {
  *   - series：每日序列（图表用）
  *   - scenarios：典型场景的千次成本（报价 / 配额参考）
  *   - prices：当前生效的单价表（前端展示「为什么是这个钱」）
+ *   - quota：当日额度与已用金额（超额拦截的事实来源）
  */
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -38,6 +39,7 @@ export async function GET(request: Request) {
         ...summary,
         scenarios,
         prices: PRICE_TABLE.standard,
+        quota: quotaState(),
       },
     },
     { headers: { "cache-control": "no-store" } },

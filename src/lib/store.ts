@@ -231,8 +231,7 @@ export function usageSeries(days = 7): UsageBucket[] {
   return out;
 }
 
-export function usageSummary(days = 7) {
-  const series = usageSeries(days);
+export function usageSummary(days = 7) {  const series = usageSeries(days);
   const todayBucket = series[series.length - 1];
   const sum = series.reduce(
     (acc, b) => ({
@@ -255,4 +254,60 @@ export function usageSummary(days = 7) {
     week: { ...sum, costYuan: Number(sum.costYuan.toFixed(6)), cacheHitRate },
     series,
   };
+}
+
+// ---------------- 配额 ----------------
+
+/**
+ * 为什么按金额而不是按次数：
+ *   实测普通问答单次约 ¥0.0010，双工具 Function Calling 单次约 ¥0.0044，差 4 倍以上。
+ *   如果按次数限制，刷 4 次便宜问答和刷 1 次工具调用花费相当，次数配额完全拦不住。
+ *
+ * ⚠️ 内存版限制：进程重启清零；Vercel 多实例下各算各的。
+ *    要真生效必须把 usage 落到数据库，用同一份数据判定（见 README 已知限制）。
+ */
+export const QUOTA_LIMIT_YUAN = Number(process.env.DAILY_QUOTA_YUAN ?? 5);
+
+export interface QuotaState {
+  date: string;
+  limitYuan: number;
+  usedYuan: number;
+  remainingYuan: number;
+  /** 0-100，超额时可能 >100 */
+  percent: number;
+  exceeded: boolean;
+  /** 次日零点的时间戳，前端用来显示「何时重置」 */
+  resetAt: number;
+}
+
+/** 次日零点（本地时区） */
+function nextMidnight(): number {
+  const d = new Date();
+  d.setHours(24, 0, 0, 0);
+  return d.getTime();
+}
+
+export function quotaState(limitYuan = QUOTA_LIMIT_YUAN): QuotaState {
+  const store = db();
+  const date = today();
+  const bucket = store.usage.find((b) => b.date === date);
+  const used = bucket?.costYuan ?? 0;
+  // 保留 6 位小数：单次成本是 1e-3 量级，截断太狠会显示成 0
+  const usedYuan = Number(used.toFixed(6));
+  const remaining = Math.max(0, limitYuan - usedYuan);
+  return {
+    date,
+    limitYuan,
+    usedYuan,
+    remainingYuan: Number(remaining.toFixed(6)),
+    percent: limitYuan > 0 ? Math.round((usedYuan / limitYuan) * 1000) / 10 : 0,
+    exceeded: usedYuan >= limitYuan,
+    resetAt: nextMidnight(),
+  };
+}
+
+/** 调用模型前先判一次，超额直接拒绝，不要等到生成完再记账 */
+export function checkQuota(): { ok: boolean; state: QuotaState } {
+  const state = quotaState();
+  return { ok: !state.exceeded, state };
 }

@@ -8,41 +8,15 @@ const modules = [
     desc: "SSE 打字机效果、随时中断、首字延迟打点",
     state: "已完成",
     tone: "done" as const,
+    external: false,
   },
-  // {
-  //   href: "/admin",
-  //   title: "管理后台",
-  //   desc: "概览、会话、用量、设置四页（含侧边栏导航）",
-  //   state: "已完成",
-  //   tone: "done" as const,
-  // },
-  // {
-  //   href: "/admin/sessions",
-  //   title: "会话与日志",
-  //   desc: "会话列表、消息详情、单条耗时与 token",
-  //   state: "已完成",
-  //   tone: "done" as const,
-  // },
-  // {
-  //   href: "/admin/usage",
-  //   title: "用量与成本",
-  //   desc: "今日指标、缓存命中率、场景成本、近 7 日趋势",
-  //   state: "已完成",
-  //   tone: "done" as const,
-  // },
-  // {
-  //   href: "/admin/settings",
-  //   title: "参数设置",
-  //   desc: "系统提示词、temperature、max_tokens、功能开关",
-  //   state: "本地配置",
-  //   tone: "done" as const,
-  // },
   {
-    href: "#",
+    href: "https://github.com/156351564/rag-kb-qa",
     title: "知识库问答",
-    desc: "文档入库、向量检索、引用溯源",
-    state: "D5 待做",
-    tone: "todo" as const,
+    desc: "独立 Python 服务：切分策略对比、召回兜底、异步入库、流式引用",
+    state: "独立服务",
+    tone: "done" as const,
+    external: true,
   },
 ];
 
@@ -115,24 +89,25 @@ export default function Home() {
                   </p>
                 </div>
                 {clickable && (
-                  <span className="text-xs text-neutral-500">进入 →</span>
+                  <span className="text-xs text-neutral-500">
+                    {m.external ? "查看仓库 →" : "进入 →"}
+                  </span>
                 )}
               </div>
             );
 
-            return (
-              <li key={m.title}>
-                {clickable ? (
-                  <Link href={m.href} className="block h-full">
-                    {body}
-                  </Link>
-                ) : (
-                  <div className="h-full cursor-not-allowed opacity-60">
-                    {body}
-                  </div>
-                )}
-              </li>
+            // 外链用原生 a：Next 的 Link 适合站内路由，外链交给浏览器更直接
+            const inner = m.external ? (
+              <a href={m.href} target="_blank" rel="noreferrer" className="block h-full">
+                {body}
+              </a>
+            ) : (
+              <Link href={m.href} className="block h-full">
+                {body}
+              </Link>
             );
+
+            return <li key={m.title}>{clickable ? inner : body}</li>;
           })}
         </ul>
       </section>
