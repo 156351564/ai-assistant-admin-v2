@@ -107,7 +107,7 @@ export async function POST(request: Request) {
    * 生成完再检查等于钱已经花掉了，拦不住刷接口的人。
    * 429 是语义正确的状态码；retry-after 告诉客户端什么时候可以再来。
    */
-  const quota = checkQuota();
+  const quota = await checkQuota();
   if (!quota.ok) {
     const retryAfter = Math.max(1, Math.ceil((quota.state.resetAt - Date.now()) / 1000));
     return new Response(
@@ -141,9 +141,9 @@ export async function POST(request: Request) {
 
   // 会话记录：标题取最后一条用户消息
   const lastUser = [...messages].reverse().find((m) => m.role === "user");
-  const session = createSession(lastUser?.content ?? "新对话", llmConfig.model);
+  const session = await createSession(lastUser?.content ?? "新对话", llmConfig.model);
   if (lastUser) {
-    appendMessage(session.id, { role: "user", content: lastUser.content });
+    await appendMessage(session.id, { role: "user", content: lastUser.content });
   }
 
   const stream = new ReadableStream<Uint8Array>({
@@ -221,11 +221,11 @@ export async function POST(request: Request) {
           miss: Math.ceil(messages.reduce((n, m) => n + m.content.length, 0) * 1.2),
           output: Math.ceil(acc.length * 1.2),
         };
-        const costYuan = recordUsage(
+        const costYuan = await recordUsage(
           { inputMissTokens: tokens.miss, inputHitTokens: tokens.hit, outputTokens: tokens.output },
           totalMs,
         );
-        appendMessage(session.id, {
+        await appendMessage(session.id, {
           role: "assistant",
           content: acc,
           latencyMs: totalMs,

@@ -25,16 +25,22 @@
 | 会话列表与详情 | ✅ | 分页、消息序列、单条耗时与 token |
 | 用量与成本看板 | ✅ | 缓存命中率、场景成本、单价表 |
 | 参数设置 | ✅ | **本地 localStorage，未接入后端** |
-| 会话持久化 | 🚧 | 当前内存版：进程重启丢失、多实例不共享 |
+| 会话持久化 | ✅ | Postgres（Neon）：多实例共享；未配 `DATABASE_URL` 时退回内存 |
 | 配额拦截 | ✅ | **按金额而非次数**；超额 429 + `Retry-After`，用量页有实时进度条 |
 | RAG 知识库问答 | ✅ | **独立 Python 服务**：[rag-kb-qa](https://github.com/156351564/rag-kb-qa)（切分对比 / 召回兜底 / 异步入库 / 流式引用） |
 
-> ⚠️ **当前实现的已知限制**：会话与用量存在进程内存里（`src/lib/store.ts`）。
-> 本地开发重启即丢，部署到 Vercel 后多副本之间不共享。
-> 接口已按存储层设计，接 Neon/Postgres 只需替换 `store.ts` 的实现。
-> **配额判定依赖同一份内存用量，所以它现在是"逻辑完整、存储不可靠"** ——
-> 真要做风控必须先把用量落库，否则多实例下每个实例各算各的。
+> ⚠️ **已知限制**（换了数据库之后仍然成立的几条）：
 > 参数设置页是纯前端 localStorage，不会影响实际请求——页面上有醒目提示。
+> 会话列表没有筛选与搜索，只有分页。
+> 配额按「当日累计金额」判定，没有做用户维度（当前是单租户 demo）。
+>
+> **存储演进（面试可以讲的一段）**：
+> 第一版把会话与用量放在进程内存里，结果部署到 Vercel 后出现「发完消息，后台看不到」——
+> serverless 多实例各有各的内存，写数据的实例和读数据的实例不是同一个。
+> 改法是抽出 `StoreBackend` 接口，实现内存与 Postgres 两套，用 `DATABASE_URL` 开关切换：
+> 本地开发零配置走内存，线上走 Postgres。
+> 顺带修掉一个隐藏 bug：内存版的用量累加是「读-改-写」，并发会丢更新；
+> Postgres 版改成 `INSERT ... ON CONFLICT DO UPDATE SET x = x + excluded.x`，一条 SQL 原子完成。
 
 ---
 
@@ -67,8 +73,14 @@ pnpm dev
 | `FALLBACK_*` | 备用供应商，主供应商失败时降级 |
 | `DASHSCOPE_API_KEY` | 通义 Embedding（RAG 用） |
 | `LLM_MAX_TOKENS` / `LLM_TIMEOUT_MS` | 生成上限与超时 |
+| `DATABASE_URL` | Postgres（Neon）连接串。**留空则退回内存存储**，本地开发零配置 |
+| `DAILY_QUOTA_YUAN` | 当日额度（元），默认 5；超额返回 429 |
 
 > `.env*` 已在 `.gitignore` 中，密钥不会进仓库。
+>
+> **存储双模式**：配了 `DATABASE_URL` 就走 Postgres（多实例共享、并发安全）；
+> 没配就走内存（本地零配置，但重启即丢）。接口完全一致，调用方不需要改。
+> 自检：`node --env-file=.env.local scripts/db-check.mjs`
 
 ---
 
@@ -109,7 +121,11 @@ src/
     ├── structured.ts                  # 结构化调用 + 重试
     ├── tools.ts                       # 工具定义与执行器
     ├── cost.ts                        # 成本核算与单价表
-    ├── store.ts                       # 会话/用量存储（当前内存版）
+    ├── store/                         # 存储层（门面 + 双后端）
+    │   ├── index.ts                   # 门面：按 DATABASE_URL 选后端，补零与配额
+    │   ├── memory.ts                  # 内存后端（本地零配置，重启即丢）
+    │   ├── postgres.ts                # Postgres 后端（Neon，多实例共享）
+    │   └── types.ts                   # 共享类型 + StoreBackend 接口
     └── types.ts                       # 共享类型
 ```
 

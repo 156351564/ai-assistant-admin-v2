@@ -8,7 +8,7 @@ export async function GET(request: Request) {
   const size = Math.min(50, Math.max(1, Number(url.searchParams.get("size") ?? 20)));
 
   return NextResponse.json(
-    { ok: true, data: listSessions(page, size) },
+    { ok: true, data: await listSessions(page, size) },
     { headers: { "cache-control": "no-store" } },
   );
 }

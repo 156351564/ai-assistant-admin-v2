@@ -22,7 +22,7 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const days = Math.min(30, Math.max(1, Number(url.searchParams.get("days") ?? 7)));
 
-  const summary = usageSummary(days);
+  const summary = await usageSummary(days);
 
   // 单价统一从 cost.ts 取，避免两处写死后数值对不上
   const scenarios = Object.entries(SCENARIO_SAMPLES).map(([name, tokens]) => ({
@@ -39,7 +39,7 @@ export async function GET(request: Request) {
         ...summary,
         scenarios,
         prices: PRICE_TABLE.standard,
-        quota: quotaState(),
+        quota: await quotaState(),
       },
     },
     { headers: { "cache-control": "no-store" } },

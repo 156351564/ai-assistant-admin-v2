@@ -11,11 +11,11 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const session = getSession(id);
+  const session = await getSession(id);
 
   if (!session) {
     return NextResponse.json(
-      { ok: false, code: "NOT_FOUND", message: "会话不存在（内存版重启后会丢失）" },
+      { ok: false, code: "NOT_FOUND", message: "会话不存在" },
       { status: 404 },
     );
   }
